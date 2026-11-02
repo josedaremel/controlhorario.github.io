@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Control Horario</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏱️</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{--bg:#f4f1ec;--card:#fff;--tx:#1f2430;--mut:#6b7280;--pri:#9b2c2c;--pri2:#7a1f1f;--ok:#15803d;--bad:#b91c1c;--bd:#e5e0d8;--sh:0 8px 30px rgba(60,30,20,.08);color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15171c;--card:#1e2128;--tx:#eceef2;--mut:#9aa3b2;--pri:#d85c5c;--pri2:#c04545;--ok:#4ade80;--bad:#f87171;--bd:#2e323c;--sh:0 8px 30px rgba(0,0,0,.4);color-scheme:dark}}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:1000px;margin:0 auto;padding:20px 16px 40px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:18px;box-shadow:var(--sh);padding:22px}
+h1,h2,h3{margin:0 0 8px}
+.brand{text-align:center;margin:10px 0 18px}.brand .logo{font-size:44px}.brand p{color:var(--mut);margin:4px 0}
+input,select,button{font:inherit;border-radius:12px;border:1px solid var(--bd);padding:12px 14px;background:var(--bg);color:var(--tx);width:100%}
+button{cursor:pointer;border:0;background:var(--pri);color:#fff;font-weight:600;transition:.15s;width:auto}
+button:hover{background:var(--pri2)}button.sec{background:var(--bg);color:var(--tx);border:1px solid var(--bd)}button.del{background:transparent;color:var(--bad);padding:4px 8px}
+.clock{font-size:46px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums}.date{text-align:center;color:var(--mut);margin-bottom:16px;text-transform:capitalize}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.big button{padding:22px;font-size:18px}
+.in{background:var(--ok)}.in:hover{background:#116632}.out{background:var(--bad)}.out:hover{background:#991b1b}
+.msg{margin-top:14px;padding:12px;border-radius:12px;text-align:center;font-weight:600}.msg.ok{background:rgba(21,128,61,.12);color:var(--ok)}.msg.err{background:rgba(185,28,28,.12);color:var(--bad)}
+.narrow{max-width:460px;margin:0 auto}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}.tabs button{background:var(--card);color:var(--tx);border:1px solid var(--bd)}.tabs button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}.stat{background:var(--bg);border-radius:14px;padding:16px}.stat b{display:block;font-size:26px}.stat span{color:var(--mut);font-size:13px}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px}.filters label{font-size:12px;color:var(--mut);display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--bd);white-space:nowrap}th{color:var(--mut);font-size:12px;text-transform:uppercase}
+.tag{padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700}.tag.e{background:rgba(21,128,61,.15);color:var(--ok)}.tag.s{background:rgba(185,28,28,.15);color:var(--bad)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.qrbox{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}#qr{background:#fff;padding:16px;border-radius:16px}
+.foot{text-align:center;margin-top:22px;font-size:13px}.foot a{color:var(--mut);cursor:pointer;text-decoration:underline;padding:10px;display:inline-block}
+.demo{background:rgba(217,119,6,.15);color:#b45309;border-radius:10px;padding:8px 12px;font-size:13px;margin-bottom:12px;text-align:center}
+.hide{display:none}
+.sugw{position:relative}.sug{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:var(--sh);z-index:20;overflow:hidden}
+.sug div{padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--bd)}.sug div:last-child{border:0}.sug div:hover{background:var(--bg)}
+.verify{margin-top:14px;padding:16px;border-radius:14px;background:rgba(217,119,6,.12);border:1px solid rgba(217,119,6,.4)}.verify.confirm{background:rgba(155,44,44,.08);border-color:rgba(155,44,44,.35);text-align:center}.verify .vb{display:flex;flex-direction:column;gap:8px;margin:10px 0}.verify input{margin:8px 0}
+@media print{body *{visibility:hidden}#qrp,#qrp *{visibility:visible}#qrp{position:absolute;inset:0;text-align:center}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+/* ====== CONFIGURACIÓN ====== */
+const SUPA_URL = "";   // https://xxxx.supabase.co
+const SUPA_KEY = "";   // anon public key
+const ADMIN_PASS = "Hispanicapalacio";
+const EMPRESA = "Hispanica Palacio";
+/* ========================== */
+
+const $ = s => document.querySelector(s);
+const sb = (SUPA_URL && SUPA_KEY && window.supabase) ? supabase.createClient(SUPA_URL, SUPA_KEY) : null;
+const store = {
+  get(k){try{return localStorage.getItem(k)}catch(e){return null}},
+  set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+};
+const mem={};
+const ss={get(k){try{return sessionStorage.getItem(k)}catch(e){return mem[k]||null}},set(k,v){mem[k]=v;try{sessionStorage.setItem(k,v)}catch(e){}},del(k){delete mem[k];try{sessionStorage.removeItem(k)}catch(e){}}};
+const db = {
+  async list(){
+    if(sb){const {data,error}=await sb.from('fichajes').select('*').order('ts');if(error)throw error;return data}
+    try{return JSON.parse(store.get('fichajes')||'[]')}catch(e){return []}
+  },
+  async add(r){
+    if(sb){const {error}=await sb.from('fichajes').insert(r);if(error)throw error;return}
+    const l=await db.list();l.push({...r,id:Date.now()+Math.random()});store.set('fichajes',JSON.stringify(l))
+  },
+  async del(id){
+    if(sb){const {data,error}=await sb.from('fichajes').delete().eq('id',id).select();if(error)throw error;if(!data||!data.length)throw new Error('Supabase no permitió borrar. Vuelve a ejecutar supabase.sql (política "borrar").');return}
+    store.set('fichajes',JSON.stringify((await db.list()).filter(x=>x.id!=id)))
+  },
+  async rename(a,b){
+    if(sb){const {error}=await sb.from('fichajes').update({nombre:b}).eq('nombre',a);if(error)throw error;return}
+    store.set('fichajes',JSON.stringify((await db.list()).map(x=>x.nombre===a?{...x,nombre:b}:x)))
+  },
+  async purge(){ /* borra fichajes de más de 3 meses */
+    const c=new Date();c.setMonth(c.getMonth()-3);const iso=c.toISOString();
+    if(sb){await sb.from('fichajes').delete().lt('ts',iso);return}
+    store.set('fichajes',JSON.stringify((await db.list()).filter(x=>x.ts>=iso)))
+  }
+};
+const dayK = d => new Date(d).toLocaleDateString('sv');
+const hm = d => new Date(d).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+const fmtH = ms => `${Math.floor(ms/3600000)}h ${String(Math.floor(ms%3600000/60000)).padStart(2,'0')}m`;
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const demoBar = () => sb ? '' : '<div class="demo">Modo demo: datos guardados solo en este navegador. Configura Supabase para uso real.</div>';
+
+/* ====== ROUTER ====== */
+let view = (()=>{try{return location.hash==='#admin'?'admin':'worker'}catch(e){return 'worker'}})();
+function go(v){view=v;try{history.replaceState(null,'',v==='admin'?'#admin':location.pathname+location.search)}catch(e){}route()}
+function route(){ view==='admin' ? adminView() : workerView(); }
+window.addEventListener('hashchange',()=>{view=location.hash==='#admin'?'admin':'worker';route()});
+
+/* ====== PANEL TRABAJADOR ====== */
+let clockT;
+function workerView(){
+  clearInterval(clockT);
+  $('#app').innerHTML=`<div class="narrow">
+  <div class="brand"><div class="logo">⏱️</div><h1>Control horario</h1><p>Registra tu entrada y salida</p></div>
+  ${demoBar()}
+  <div class="card">
+    <div class="clock" id="clk"></div><div class="date" id="dt"></div>
+    <div class="sugw"><input id="nom" style="text-transform:uppercase" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="BUSCA O ESCRIBE TU NOMBRE" autocomplete="off" value="${esc(store.get('nombre')||'')}" oninput="sug()" onfocus="sug()" onblur="setTimeout(()=>{const e=$('#sug');if(e)e.innerHTML=''},200)"><div class="sug hide" id="sug"></div></div>
+    <div class="big"><button class="in" onclick="fichar('entrada')">🟢 Entrada</button><button class="out" onclick="fichar('salida')">🔴 Salida</button></div>
+    <div id="msg"></div><div id="hoy"></div>
+  </div>
+  <div class="foot"><a role="button" tabindex="0" onclick="go('admin')">Acceso administrador</a></div></div>`;
+  const tick=()=>{const n=new Date();$('#clk').textContent=n.toLocaleTimeString('es-ES');$('#dt').textContent=n.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})};
+  tick();clockT=setInterval(tick,1000);
+  $('#nom').addEventListener('change',()=>showToday());showToday();loadNames();
+}
+let NAMES=[],PEND=null;
+const norm=t=>t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+const clean=t=>t.replace(/\s+/g,' ').trim().toUpperCase();
+async function loadNames(){try{NAMES=[...new Set((await db.list()).map(r=>r.nombre))].sort()}catch(e){}}
+function lev(a,b){const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)d[0][j]=j;
+  for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]}
+function similar(n){
+  const a=norm(n),ta=a.split(' ');
+  return NAMES.filter(x=>{const b=norm(x),tb=b.split(' ');
+    return lev(a,b)<=3||b.includes(a)||a.includes(b)||ta.filter(t=>t.length>2&&tb.some(u=>lev(t,u)<=1)).length>=2
+  }).slice(0,5);
+}
+function sug(){
+  const e=$('#sug'),q=norm($('#nom').value);
+  const l=q?NAMES.filter(n=>norm(n).includes(q)&&norm(n)!==q).slice(0,6):[];
+  e.classList.toggle('hide',!l.length);
+  e.innerHTML=l.map(n=>`<div data-n="${esc(n)}" onmousedown="pick(this.dataset.n)">${esc(n)}</div>`).join('');
+}
+function pick(n){$('#nom').value=n;$('#sug').innerHTML='';$('#msg').innerHTML='';showToday()}
+function msg(t,ok){$('#msg').innerHTML=`<div class="msg ${ok?'ok':'err'}">${t}</div>`}
+async function showToday(){
+  const n=$('#nom').value.trim();if(!n){$('#hoy').innerHTML='';return}
+  try{
+    const l=(await db.list()).filter(r=>r.nombre.toLowerCase()===n.toLowerCase()&&dayK(r.ts)===dayK(new Date()));
+    $('#hoy').innerHTML=l.length?`<h3 style="margin-top:18px">Tus fichajes de hoy</h3>`+l.map(r=>`<div class="row" style="padding:6px 0;border-bottom:1px solid var(--bd)"><span class="tag ${r.tipo[0]}">${r.tipo}</span><b>${hm(r.ts)}</b></div>`).join(''):'';
+  }catch(e){}
+}
+async function fichar(tipo){
+  const n=clean($('#nom').value);
+  if(n.length<3)return msg('Escribe tu nombre completo',false);
+  if(!NAMES.length)await loadNames();
+  PEND={n,tipo};
+  if(NAMES.includes(n)){
+    $('#msg').innerHTML=`<div class="verify confirm"><h3>¿Eres ${esc(n)}?</h3><p>¿Deseas fichar tu <b>${tipo}</b> ahora?</p>
+    <div class="row" style="gap:10px"><button class="${tipo==='entrada'?'in':'out'}" style="flex:1" onclick="doFichar(PEND.n,PEND.tipo)">Sí, fichar ${tipo}</button><button class="sec" style="flex:1" onclick="$('#msg').innerHTML=''">No, cancelar</button></div></div>`;
+    return $('#msg').scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  $('#msg').innerHTML=`<div class="verify"><h3>⚠️ Nombre no registrado</h3><p>«<b>${esc(n)}</b>» aún no está en el sistema.</p>
+  <p>Si es la <b>primera vez</b> que fichas, confirma escribiendo tu nombre otra vez:</p>
+  <input id="nom2" style="text-transform:uppercase" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="REPITE TU NOMBRE EXACTO">
+  <div class="row"><button onclick="confirmNew()">Confirmar y fichar</button><button class="sec" onclick="$('#msg').innerHTML=''">Cancelar</button></div></div>`;
+}
+function confirmNew(){
+  if(clean($('#nom2').value)!==PEND.n){$('#nom2').style.borderColor='var(--bad)';return alert('El nombre no coincide. Revisa que esté escrito exactamente igual.')}
+  doFichar(PEND.n,PEND.tipo);
+}
+async function doFichar(n,tipo){
+  try{
+    const l=(await db.list()).filter(r=>r.nombre.toLowerCase()===n.toLowerCase()).sort((a,b)=>new Date(a.ts)-new Date(b.ts));
+    let last=l[l.length-1];if(last&&Date.now()-new Date(last.ts)>18*36e5&&last.tipo==='entrada')last=null;
+    if(last&&last.tipo===tipo)return msg(`Ya registraste ${tipo} a las ${hm(last.ts)}`,false);
+    if((!last||last.tipo==='salida')&&tipo==='salida')return msg('Primero debes fichar la entrada',false);
+    await db.add({nombre:n,tipo,ts:new Date().toISOString()});
+    store.set('nombre',n);if(!NAMES.includes(n))NAMES.push(n);msg(`✔ ${tipo==='entrada'?'Entrada':'Salida'} registrada a las ${hm(new Date())}. ¡Gracias, ${esc(n.split(' ')[0])}!`,true);showToday();
+  }catch(e){msg('Error de conexión. Inténtalo de nuevo.',false)}
+}
+
+/* ====== PANEL ADMIN ====== */
+let ALL=[],tab='panel',F={};
+let cfg=(()=>{const d={jor:40,pct:31.5,sh:''};try{return {...d,...JSON.parse(store.get('cfg')||'{}')}}catch(e){return d}})();
+const num=v=>{const x=parseFloat(String(v).replace(',','.'));return isNaN(x)?0:x};
+const nf=(x,d=2)=>x.toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d});
+const hh=ms=>nf(ms/36e5)+' h';
+const pc=ms=>nf(ms/(cfg.jor*36e5)*100,1)+' %';
+const eur=ms=>cfg.sh?nf(ms/36e5*num(cfg.sh)*cfg.pct/100)+' €':'—';
+const fd=d=>d.split('-').reverse().join('/');
+const rl=async()=>{ALL=(await db.list()).sort((a,b)=>new Date(a.ts)-new Date(b.ts))};
+
+function dlg(o){return new Promise(res=>{
+  const w=document.createElement('div');w.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:99';
+  w.innerHTML=`<div class="card" style="max-width:420px;width:100%"><h3>${esc(o.t)}</h3><p style="color:var(--mut)">${o.m||''}</p>${o.input?`<input id="dgi" style="text-transform:uppercase" value="${esc(o.val||'')}">`:''}<div class="row" style="gap:10px;margin-top:14px">${o.info?'':'<button class="sec" style="flex:1" id="dgn">Cancelar</button>'}<button style="flex:1" id="dgy">${o.ok||'Aceptar'}</button></div></div>`;
+  document.body.appendChild(w);const c=v=>{w.remove();res(v)};
+  const n=w.querySelector('#dgn');if(n)n.onclick=()=>c(null);
+  w.querySelector('#dgy').onclick=()=>c(o.input?w.querySelector('#dgi').value:true);
+  const i=w.querySelector('#dgi');if(i){i.focus();i.select()}
+})}
+const info=(t,m)=>dlg({t,m,info:true,ok:'Entendido'});
+
+/* turnos (admite turnos nocturnos que cruzan la medianoche) */
+function nightMs(a,b){
+  let ms=0;const d=new Date(a);d.setHours(0,0,0,0);
+  while(d<b){
+    for(const [h0,h1] of [[0,6],[22,24]]){
+      const w0=new Date(d);w0.setHours(h0,0,0,0);const w1=new Date(d);w1.setHours(h1,0,0,0);
+      ms+=Math.max(0,Math.min(b,w1)-Math.max(a,w0));
+    }
+    d.setDate(d.getDate()+1);
+  }
+  return ms;
+}
+function shifts(rows){
+  const by={};[...rows].sort((a,b)=>new Date(a.ts)-new Date(b.ts)).forEach(r=>(by[r.nombre.toLowerCase()]??=[]).push(r));
+  const out=[];
+  Object.values(by).forEach(l=>{let p=null;
+    l.forEach(r=>{const t=new Date(r.ts);
+      if(r.tipo==='entrada'){if(p)out.push({nombre:p.n,ini:p.t,fin:null});p={n:r.nombre,t}}
+      else if(p){out.push({nombre:p.n,ini:p.t,fin:(t-p.t<=18*36e5)?t:null});p=null}
+    });
+    if(p)out.push({nombre:p.n,ini:p.t,fin:null});
+  });
+  return out;
+}
+function summarize(rows){
+  const m={};
+  shifts(rows).forEach(s=>{
+    const day=dayK(s.ini),k=day+'|'+s.nombre.toLowerCase();
+    const o=m[k]??={day,nombre:s.nombre,first:s.ini,last:null,ms:0,night:0,open:false};
+    if(s.fin){o.last=s.fin;o.ms+=s.fin-s.ini;o.night+=nightMs(s.ini,s.fin)}else o.open=true;
+  });
+  return Object.values(m).sort((a,b)=>b.day.localeCompare(a.day)||a.nombre.localeCompare(b.nombre));
+}
+const summ=()=>summarize(ALL).filter(x=>x.day>=F.d&&x.day<=F.h&&(!F.n||x.nombre===F.n));
+const mon=d=>{const x=new Date(d+'T12:00:00');x.setDate(x.getDate()-((x.getDay()+6)%7));return x.toLocaleDateString('sv')};
+const weekLbl=w=>{const e=new Date(w+'T12:00:00');e.setDate(e.getDate()+6);return fd(w).slice(0,5)+' - '+fd(e.toLocaleDateString('sv')).slice(0,5)};
+function weekly(S){
+  const m={};S.forEach(x=>{const w=mon(x.day),k=w+'|'+x.nombre.toLowerCase();
+    const o=m[k]??={sem:w,nombre:x.nombre,dias:0,ms:0,night:0};o.dias++;o.ms+=x.ms;o.night+=x.night});
+  return Object.values(m).sort((a,b)=>b.sem.localeCompare(a.sem)||a.nombre.localeCompare(b.nombre));
+}
+function glob(S){
+  const m={};weekly(S).forEach(w=>{const k=w.nombre.toLowerCase();
+    const o=m[k]??={nombre:w.nombre,sem:0,dias:0,ms:0,night:0};o.sem++;o.dias+=w.dias;o.ms+=w.ms;o.night+=w.night});
+  return Object.values(m).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+}
+
+function adminView(){
+  clearInterval(clockT);
+  if(ss.get('adm')!=='1'){
+    $('#app').innerHTML=`<div class="narrow"><div class="brand"><div class="logo">🔐</div><h1>Administrador</h1></div>
+    <div class="card"><input id="pw" type="password" autocapitalize="off" autocorrect="off" placeholder="Contraseña" onkeydown="if(event.key==='Enter')login()"><div class="big" style="grid-template-columns:1fr"><button onclick="login()">Entrar</button></div><div id="msg"></div></div>
+    <div class="foot"><a role="button" tabindex="0" onclick="go('worker')">← Volver al panel del trabajador</a></div></div>`;return;
+  }
+  const t=new Date().toLocaleDateString('sv'),w=new Date(Date.now()-6*864e5).toLocaleDateString('sv');
+  F={d:F.d||w,h:F.h||t,n:F.n||''};
+  $('#app').innerHTML=`<div class="row"><div><h1>⏱️ Control horario</h1><span style="color:var(--mut)">Panel de administración</span></div>
+  <div><button class="sec" onclick="logout()">Cerrar sesión</button></div></div>${demoBar()}
+  <div class="tabs">${[['panel','📊 Resumen'],['reg','🗂️ Registros'],['hor','🕒 Horas por día'],['glo','👥 Cómputo y parcialidad'],['trab','✏️ Nombres'],['qr','📱 Código QR']].map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';adminView()">${l}</button>`).join('')}</div>
+  <div class="card" id="body">Cargando…</div>`;
+  loadAdmin();
+}
+function login(){
+  if($('#pw').value.trim()===ADMIN_PASS){ss.set('adm','1');adminView()}else msg('Contraseña incorrecta',false);
+}
+function logout(){ss.del('adm');go('worker')}
+const filt = () => ALL.filter(r=>dayK(r.ts)>=F.d&&dayK(r.ts)<=F.h&&(!F.n||r.nombre===F.n));
+function filtersHTML(){
+  const names=[...new Set(ALL.map(r=>r.nombre))].sort();
+  return `<div class="filters"><label>Desde<input type="date" value="${F.d}" onchange="F.d=this.value;draw()"></label><label>Hasta<input type="date" value="${F.h}" onchange="F.h=this.value;draw()"></label>
+  <label>Trabajador<select onchange="F.n=this.value;draw()"><option value="">Todos</option>${names.map(n=>`<option ${F.n===n?'selected':''}>${esc(n)}</option>`).join('')}</select></label>
+  <button onclick="pdf()">📄 Exportar PDF</button></div>`;
+}
+async function loadAdmin(){
+  try{try{await db.purge()}catch(e){}await rl();draw()}catch(e){$('#body').textContent='Error al cargar datos'}
+}
+function setCfg(k,v){cfg[k]=k==='sh'?v:(num(v)||cfg[k]);store.set('cfg',JSON.stringify(cfg));draw()}
+function draw(){
+  const b=$('#body'),f=filt();
+  if(tab==='panel'){
+    const sA=summarize(ALL),t=dayK(new Date()),ws=dayK(Date.now()-6*864e5);
+    const last={};ALL.forEach(r=>last[r.nombre]=r);
+    const dentro=Object.values(last).filter(r=>r.tipo==='entrada'&&Date.now()-new Date(r.ts)<18*36e5).map(r=>r.nombre);
+    const h=sA.filter(x=>x.day===t),w=sA.filter(x=>x.day>=ws);
+    const sum=(l,k)=>l.reduce((a,x)=>a+x[k],0);
+    b.innerHTML=`<div class="stats"><div class="stat"><b>${dentro.length}</b><span>Trabajando ahora</span></div><div class="stat"><b>${ALL.filter(r=>dayK(r.ts)===t).length}</b><span>Fichajes hoy</span></div>
+    <div class="stat"><b>${hh(sum(h,'ms'))}</b><span>Horas hoy</span></div><div class="stat"><b>${hh(sum(w,'ms'))}</b><span>Horas últimos 7 días</span></div><div class="stat"><b>${hh(sum(w,'night'))}</b><span>Nocturnas últimos 7 días</span></div></div>
+    <h3>En el centro ahora</h3><p>${dentro.length?dentro.map(n=>`<span class="tag e">${esc(n)}</span> `).join(''):'<span style="color:var(--mut)">Nadie en este momento</span>'}</p>
+    <p style="color:var(--mut);font-size:13px">🗓️ Los fichajes de más de 3 meses se eliminan automáticamente. Exporta el PDF antes si necesitas conservarlos.</p>
+    <h3 style="margin-top:18px">Añadir fichaje manual</h3><div class="filters"><label>Nombre<input id="mn" style="text-transform:uppercase"></label><label>Tipo<select id="mt"><option>entrada</option><option>salida</option></select></label><label>Fecha y hora<input id="mf" type="datetime-local"></label><button onclick="manual()">Añadir</button></div>`;
+  }else if(tab==='reg'){
+    b.innerHTML=filtersHTML()+`<div class="tw"><table><tr><th>Fecha</th><th>Trabajador</th><th>Tipo</th><th>Hora</th><th></th></tr>${[...f].reverse().map(r=>`<tr><td>${new Date(r.ts).toLocaleDateString('es-ES')}</td><td>${esc(r.nombre)}</td><td><span class="tag ${r.tipo[0]}">${r.tipo}</span></td><td>${hm(r.ts)}</td><td><button class="del" title="Eliminar" style="font-size:18px" data-id="${esc(r.id)}" onclick="delr(this.dataset.id)">🗑️</button></td></tr>`).join('')||'<tr><td colspan=5>Sin registros</td></tr>'}</table></div>`;
+  }else if(tab==='hor'){
+    const s=summ();
+    b.innerHTML=filtersHTML()+`<div class="tw"><table><tr><th>Fecha</th><th>Trabajador</th><th>Entrada</th><th>Salida</th><th>Total</th><th>Nocturnas</th></tr>${s.map(x=>`<tr><td>${fd(x.day)}</td><td>${esc(x.nombre)}</td><td>${hm(x.first)}</td><td>${x.last?hm(x.last)+(dayK(x.last)!==x.day?' (+1)':''):(x.open?'en curso':'—')}</td><td><b>${hh(x.ms)}</b></td><td>${hh(x.night)}</td></tr>`).join('')||'<tr><td colspan=6>Sin datos</td></tr>'}</table></div>`;
+  }else if(tab==='glo'){
+    const S=summ(),g=glob(S),wk=weekly(S),T=g.reduce((a,x)=>a+x.ms,0),N=g.reduce((a,x)=>a+x.night,0);
+    b.innerHTML=filtersHTML()+`<div class="filters"><label>Jornada completa (h/semana)<input value="${cfg.jor}" onchange="setCfg('jor',this.value)"></label><label>Plus nocturnidad (%)<input value="${cfg.pct}" onchange="setCfg('pct',this.value)"></label><label>Salario base por hora (€) · opcional<input value="${esc(cfg.sh)}" placeholder="ej. 5,30" onchange="setCfg('sh',this.value)"></label></div>
+    <p style="color:var(--mut);font-size:13px">Convenio Limpieza de Edificios y Locales de Málaga (BOP 198, 17/10/2025): trabajo nocturno de 22:00 a 06:00 con plus del 31,50 % sobre el salario base; jornada ordinaria de 40 h/semana. En 2026 el convenio está en ultraactividad: confirma los valores vigentes con tu gestoría. Parcialidad = horas de la semana ÷ jornada completa (fijos discontinuos: cada semana trabajada cuenta por separado).</p>
+    <div class="stats"><div class="stat"><b>${g.length}</b><span>Personas</span></div><div class="stat"><b>${hh(T)}</b><span>Horas totales</span></div><div class="stat"><b>${hh(N)}</b><span>Horas nocturnas</span></div><div class="stat"><b>${eur(N)}</b><span>Plus nocturnidad estimado</span></div></div>
+    <h3>Cómputo global por persona</h3><div class="tw"><table><tr><th>Trabajador</th><th>Sem. trabajadas</th><th>Horas totales</th><th>Nocturnas</th><th>Media semanal</th><th>% parcialidad media</th><th>Plus nocturno</th></tr>${g.map(x=>`<tr><td>${esc(x.nombre)}</td><td>${x.sem}</td><td><b>${hh(x.ms)}</b></td><td>${hh(x.night)}</td><td>${hh(x.ms/x.sem)}</td><td>${pc(x.ms/x.sem)}</td><td>${eur(x.night)}</td></tr>`).join('')||'<tr><td colspan=7>Sin datos</td></tr>'}</table></div>
+    <h3 style="margin-top:18px">Parcialidad semana a semana</h3><div class="tw"><table><tr><th>Semana</th><th>Trabajador</th><th>Días</th><th>Horas</th><th>Nocturnas</th><th>% jornada</th></tr>${wk.map(x=>`<tr><td>${weekLbl(x.sem)}</td><td>${esc(x.nombre)}</td><td>${x.dias}</td><td><b>${hh(x.ms)}</b></td><td>${hh(x.night)}</td><td>${pc(x.ms)}</td></tr>`).join('')||'<tr><td colspan=6>Sin datos</td></tr>'}</table></div>`;
+  }else if(tab==='trab'){
+    const c={};ALL.forEach(r=>c[r.nombre]=(c[r.nombre]||0)+1);
+    b.innerHTML=`<h3>Corregir nombres</h3><p style="color:var(--mut)">Si un trabajador escribió mal su nombre, corrígelo aquí: se actualizan todos sus fichajes. Si el nombre correcto ya existe, se unifican.</p>
+    <div class="tw"><table><tr><th>Nombre</th><th>Fichajes</th><th></th></tr>${Object.entries(c).sort().map(([n,v])=>`<tr><td>${esc(n)}</td><td>${v}</td><td><button class="sec" data-n="${esc(n)}" onclick="renameW(this.dataset.n)">✏️ Corregir</button></td></tr>`).join('')||'<tr><td colspan=3>Sin trabajadores</td></tr>'}</table></div>`;
+  }else{
+    const url=location.origin+location.pathname;
+    b.innerHTML=`<div class="qrbox" id="qrp"><h2>Escanea para fichar</h2><div id="qr"></div><p style="color:var(--mut);word-break:break-all;margin:0">${esc(url)}</p><b>Control horario</b>
+    <div style="display:flex;gap:10px" class="np"><button onclick="window.print()">🖨️ Imprimir</button><button class="sec" onclick="dlqr()">⬇️ Descargar PNG</button></div>
+    <small style="color:var(--mut)">Este QR es fijo: apunta siempre a la misma dirección, no caduca.</small></div>`;
+    new QRCode($('#qr'),{text:url,width:240,height:240,correctLevel:QRCode.CorrectLevel.H});
+  }
+}
+async function renameW(old){
+  const v=await dlg({t:'Corregir nombre',m:'Nombre actual: <b>'+esc(old)+'</b>',input:true,val:old,ok:'Guardar'});
+  const n=clean(v||'');if(!n||n===old)return;
+  if(!await dlg({t:'Confirmar cambio',m:`Cambiar todos los fichajes de <b>${esc(old)}</b> a <b>${esc(n)}</b>`,ok:'Cambiar'}))return;
+  try{await db.rename(old,n);await rl();draw()}catch(e){info('Error','No se pudo renombrar. Ejecuta de nuevo supabase.sql.')}
+}
+function dlqr(){const c=$('#qr canvas');const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='qr-fichaje.png';a.click()}
+async function delr(id){
+  const r=ALL.find(x=>String(x.id)===String(id));if(!r)return;
+  if(!await dlg({t:'Eliminar fichaje',m:`${esc(r.nombre)} · <b>${r.tipo}</b> · ${new Date(r.ts).toLocaleString('es-ES')}`,ok:'🗑️ Eliminar'}))return;
+  try{await db.del(r.id);await rl();draw()}catch(e){info('No se pudo eliminar',esc(e.message||'Error'))}
+}
+async function manual(){
+  const n=clean($('#mn').value),f=$('#mf').value;if(!n||!f)return info('Faltan datos','Completa nombre y fecha.');
+  try{await db.add({nombre:n,tipo:$('#mt').value,ts:new Date(f).toISOString()});await rl();draw()}catch(e){info('Error','No se pudo guardar.')}
+}
+function pdf(){
+  const S=summ(),G=glob(S),W=weekly(S),f=filt(),{jsPDF}=window.jspdf,d=new jsPDF(),hd=[155,44,44],st={fontSize:8},eur2=ms=>eur(ms).replace('€','EUR').replace('—','-');
+  d.setFontSize(18);d.setTextColor(155,44,44);d.text(EMPRESA+' · Control horario',14,16);
+  d.setFontSize(9);d.setTextColor(90);
+  d.text(`Periodo: ${fd(F.d)} – ${fd(F.h)}   |   Trabajador: ${F.n||'Todos'}   |   Generado: ${new Date().toLocaleString('es-ES')}`,14,23);
+  const note=d.splitTextToSize(`Convenio Limpieza de Edificios y Locales de Málaga: trabajo nocturno de 22:00 a 06:00 con plus del ${nf(cfg.pct)} % sobre el salario base. Jornada completa de referencia: ${cfg.jor} h/semana. % parcialidad = horas semanales / jornada completa (fijos discontinuos, cómputo por semana trabajada).`,182);
+  d.text(note,14,29);
+  const sec=t=>{let y=d.lastAutoTable?d.lastAutoTable.finalY+10:29+note.length*4+4;if(y>255){d.addPage();y=20}d.setFontSize(12);d.setTextColor(40);d.text(t,14,y);return y+3};
+  d.autoTable({startY:sec('Cómputo global por persona'),styles:st,head:[['Trabajador','Sem.','Horas','Nocturnas','Media sem.','% parcial.','Plus noct.']],body:G.map(x=>[x.nombre,x.sem,hh(x.ms),hh(x.night),hh(x.ms/x.sem),pc(x.ms/x.sem),eur2(x.night)]),foot:[['TOTAL','',hh(G.reduce((a,x)=>a+x.ms,0)),hh(G.reduce((a,x)=>a+x.night,0)),'','',eur2(G.reduce((a,x)=>a+x.night,0))]],headStyles:{fillColor:hd},footStyles:{fillColor:[60,60,60]}});
+  d.autoTable({startY:sec('Parcialidad semana a semana'),styles:st,head:[['Semana','Trabajador','Días','Horas','Nocturnas','% jornada']],body:W.map(x=>[weekLbl(x.sem),x.nombre,x.dias,hh(x.ms),hh(x.night),pc(x.ms)]),headStyles:{fillColor:[60,60,60]}});
+  d.autoTable({startY:sec('Horas por día'),styles:st,head:[['Fecha','Trabajador','Entrada','Salida','Total','Nocturnas']],body:S.map(x=>[fd(x.day),x.nombre,hm(x.first),x.last?hm(x.last)+(dayK(x.last)!==x.day?' (+1)':''):'—',hh(x.ms),hh(x.night)]),headStyles:{fillColor:hd}});
+  d.addPage();d.setFontSize(14);d.setTextColor(40);d.text('Detalle de fichajes',14,18);
+  d.autoTable({startY:24,styles:st,head:[['Fecha','Trabajador','Tipo','Hora']],body:f.map(r=>[new Date(r.ts).toLocaleDateString('es-ES'),r.nombre,r.tipo,hm(r.ts)]),headStyles:{fillColor:hd}});
+  d.save(`control-horario_${F.d}_${F.h}.pdf`);
+}
+route();db.purge().catch(()=>{});
+</script>
+</body>
+</html>
